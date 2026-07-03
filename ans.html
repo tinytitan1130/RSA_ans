@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>RSA 營隊導師驗證系統</title>
+    <style>
+        :root {
+            --primary: #1f4e78;
+            --secondary: #d9e1f2;
+            --bg: #f2f5f9;
+            --text: #333;
+            --success: #28a745;
+            --warning: #e67e22;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 15px;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+        h2 { color: var(--primary); text-align: center; font-size: 22px; margin-top: 0; }
+        .view { display: none; }
+        .view.active { display: block; }
+        
+        /* Buttons */
+        .btn {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            width: 100%;
+            cursor: pointer;
+            margin-bottom: 12px;
+            box-sizing: border-box;
+        }
+        .btn:active { opacity: 0.8; }
+        .btn-outline {
+            background-color: transparent;
+            color: var(--primary);
+            border: 2px solid var(--primary);
+            margin-top: 20px;
+        }
+        .btn-small {
+            padding: 10px;
+            font-size: 14px;
+            width: auto;
+            white-space: nowrap;
+        }
+
+        /* Forms */
+        select, input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            font-size: 16px;
+            margin-top: 5px;
+            box-sizing: border-box;
+            background-color: white;
+        }
+        .group-selector { margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px dashed #ddd; }
+        
+        /* List Items */
+        .list-item {
+            background: #fafafa;
+            border: 1px solid #eee;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+        .list-header { font-weight: bold; color: var(--primary); margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;}
+        .key-badge { font-size: 12px; background: var(--secondary); padding: 3px 8px; border-radius: 4px; color: var(--primary); font-weight: normal;}
+        
+        .input-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .input-row input { flex: 1; margin: 0; }
+        
+        .result-box {
+            margin-top: 10px;
+            font-size: 18px;
+            font-weight: bold;
+            color: #d9534f;
+            display: none;
+        }
+        .result-box.show { display: block; }
+        
+        /* Key Info Table Elements */
+        .key-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 15px;
+            margin-top: 6px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid #eaeaea;
+        }
+        .key-row:last-child { border-bottom: none; padding-bottom: 0; }
+        .key-label { color: #666; }
+        .key-value { font-weight: bold; font-family: monospace; font-size: 16px; }
+        .key-secret { color: #d9534f; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 主選單 -->
+        <div id="menuView" class="view active">
+            <h2>🔐 RSA 營隊導師驗證系統</h2>
+            <p style="text-align: center; color: #666; margin-bottom: 30px;">請選擇操作項目</p>
+            
+            <button class="btn" onclick="switchView('stage1View')">👉 第一階段：加密驗證<br><span style="font-size:12px; font-weight:normal;">學生使用他組公鑰加密</span></button>
+            <button class="btn" style="background-color: #2c7a7b;" onclick="switchView('stage2View')">👉 第二階段：解密驗證<br><span style="font-size:12px; font-weight:normal;">學生使用自己私鑰解密</span></button>
+            
+            <hr style="border: 0; border-top: 1px solid #ddd; margin: 25px 0;">
+            
+            <button class="btn" style="background-color: var(--warning);" onclick="switchView('keysView')">🔍 查看所有公私鑰<br><span style="font-size:12px; font-weight:normal;">導師專用金鑰總表</span></button>
+        </div>
+
+        <!-- 查看所有公私鑰 -->
+        <div id="keysView" class="view">
+            <h2>🔑 所有公私鑰總表</h2>
+            <div id="keys-list"></div>
+            <button class="btn btn-outline" onclick="switchView('menuView')">🔙 返回主選單</button>
+        </div>
+
+        <!-- 第一階段 -->
+        <div id="stage1View" class="view">
+            <h2>第一階段：加密驗證</h2>
+            <div class="group-selector">
+                <label>📍 您負責監督的組別 (發送方)：</label>
+                <select id="s1-myGroup" onchange="renderStage1()">
+                    <option value="" disabled selected>請選擇組別...</option>
+                </select>
+            </div>
+            <div id="s1-list"></div>
+            <button class="btn" id="s1-calcAllBtn" style="display:none;" onclick="calcAllStage1()">✅ 一鍵驗算全部</button>
+            <button class="btn btn-outline" onclick="switchView('menuView')">🔙 返回主選單</button>
+        </div>
+
+        <!-- 第二階段 -->
+        <div id="stage2View" class="view">
+            <h2>第二階段：解密驗證</h2>
+            <div class="group-selector">
+                <label>📍 您負責監督的組別 (接收解密方)：</label>
+                <select id="s2-myGroup" onchange="renderStage2()">
+                    <option value="" disabled selected>請選擇組別...</option>
+                </select>
+                <div id="s2-myKeyInfo" style="margin-top:10px; color:#2c7a7b; font-weight:bold; display:none;"></div>
+            </div>
+            <div id="s2-list"></div>
+            <button class="btn" id="s2-calcAllBtn" style="background-color: #2c7a7b; display:none;" onclick="calcAllStage2()">✅ 一鍵解密全部</button>
+            <button class="btn btn-outline" onclick="switchView('menuView')">🔙 返回主選單</button>
+        </div>
+    </div>
+
+    <script>
+        // 金鑰資料庫 (V4 擴充版)
+        const keys = [
+            { id: 0, N: 22, e: 3, d: 7, phi: 10 },
+            { id: 1, N: 26, e: 5, d: 17, phi: 12 },
+            { id: 2, N: 33, e: 3, d: 7, phi: 20 },
+            { id: 3, N: 34, e: 3, d: 11, phi: 16 },
+            { id: 4, N: 35, e: 5, d: 29, phi: 24 },
+            { id: 5, N: 38, e: 5, d: 11, phi: 18 },
+            { id: 6, N: 39, e: 5, d: 29, phi: 24 },
+            { id: 7, N: 46, e: 5, d: 9, phi: 22 }
+        ];
+
+        // 快速冪演算法 (支援 BigInt)
+        function modPow(base, exp, mod) {
+            let r = 1n;
+            let b = BigInt(base) % BigInt(mod);
+            let e = BigInt(exp);
+            let m = BigInt(mod);
+            while (e > 0n) {
+                if (e % 2n === 1n) r = (r * b) % m;
+                b = (b * b) % m;
+                e /= 2n;
+            }
+            return Number(r);
+        }
+
+        // 畫面切換
+        function switchView(viewId) {
+            document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
+            document.getElementById(viewId).classList.add('active');
+        }
+
+        // 初始化
+        window.onload = () => {
+            const s1Select = document.getElementById('s1-myGroup');
+            const s2Select = document.getElementById('s2-myGroup');
+            const keysList = document.getElementById('keys-list');
+            
+            keys.forEach(k => {
+                // 填充下拉選單
+                s1Select.innerHTML += `<option value="${k.id}">第 ${k.id} 組</option>`;
+                s2Select.innerHTML += `<option value="${k.id}">第 ${k.id} 組</option>`;
+                
+                // 填充公私鑰總表
+                keysList.innerHTML += `
+                    <div class="list-item">
+                        <div class="list-header" style="font-size: 18px; border-bottom: 2px solid var(--secondary); padding-bottom: 5px; margin-bottom: 10px;">
+                            第 ${k.id} 組
+                        </div>
+                        <div class="key-row">
+                            <span class="key-label">模數 (N)</span>
+                            <span class="key-value">${k.N}</span>
+                        </div>
+                        <div class="key-row">
+                            <span class="key-label">尤拉函數 Φ(N)</span>
+                            <span class="key-value">${k.phi}</span>
+                        </div>
+                        <div class="key-row">
+                            <span class="key-label">公開金鑰 (e, N)</span>
+                            <span class="key-value">(${k.e}, ${k.N})</span>
+                        </div>
+                        <div class="key-row">
+                            <span class="key-label" style="color: #d9534f; font-weight: bold;">私密金鑰 (d, N)</span>
+                            <span class="key-value key-secret">(${k.d}, ${k.N})</span>
+                        </div>
+                    </div>
+                `;
+            });
+        };
+
+        // --- 第一階段 (加密) ---
+        function renderStage1() {
+            const myId = parseInt(document.getElementById('s1-myGroup').value);
+            const list = document.getElementById('s1-list');
+            list.innerHTML = '';
+            
+            keys.forEach(target => {
+                if (target.id === myId) return;
+                const html = `
+                    <div class="list-item">
+                        <div class="list-header">
+                            傳給 第 ${target.id} 組
+                            <span class="key-badge">對方公鑰 (e=${target.e}, N=${target.N})</span>
+                        </div>
+                        <div class="input-row">
+                            <input type="number" id="s1-input-${target.id}" placeholder="明文 (2~21)">
+                            <button class="btn btn-small" onclick="calcSingleStage1(${target.id})">驗算</button>
+                        </div>
+                        <div id="s1-res-${target.id}" class="result-box"></div>
+                    </div>
+                `;
+                list.innerHTML += html;
+            });
+            document.getElementById('s1-calcAllBtn').style.display = 'block';
+        }
+
+        function calcSingleStage1(targetId) {
+            const targetKey = keys.find(k => k.id === targetId);
+            const inputEl = document.getElementById(`s1-input-${targetId}`);
+            const resEl = document.getElementById(`s1-res-${targetId}`);
+            const m = parseInt(inputEl.value);
+            
+            if (isNaN(m) || m < 2 || m > 21) {
+                resEl.innerHTML = "⚠️ 請輸入 2~21 的數字";
+                resEl.className = "result-box show";
+                return;
+            }
+            
+            const c = modPow(m, targetKey.e, targetKey.N);
+            resEl.innerHTML = `正確密文應為：<span style="font-size:24px;">${c}</span>`;
+            resEl.className = "result-box show";
+        }
+
+        function calcAllStage1() {
+            const myId = parseInt(document.getElementById('s1-myGroup').value);
+            keys.forEach(target => {
+                if (target.id !== myId) {
+                    const val = document.getElementById(`s1-input-${target.id}`).value;
+                    if(val !== "") calcSingleStage1(target.id);
+                }
+            });
+        }
+
+        // --- 第二階段 (解密) ---
+        function renderStage2() {
+            const myId = parseInt(document.getElementById('s2-myGroup').value);
+            const myKey = keys.find(k => k.id === myId);
+            const list = document.getElementById('s2-list');
+            
+            const info = document.getElementById('s2-myKeyInfo');
+            info.innerHTML = `本組私鑰：(d=${myKey.d}, N=${myKey.N})`;
+            info.style.display = 'block';
+            
+            list.innerHTML = '';
+            
+            keys.forEach(sender => {
+                if (sender.id === myId) return;
+                const html = `
+                    <div class="list-item">
+                        <div class="list-header">來自 第 ${sender.id} 組的密文</div>
+                        <div class="input-row">
+                            <input type="number" id="s2-input-${sender.id}" placeholder="收到密文數字">
+                            <button class="btn btn-small" style="background-color: #2c7a7b;" onclick="calcSingleStage2(${sender.id}, ${myId})">驗算</button>
+                        </div>
+                        <div id="s2-res-${sender.id}" class="result-box" style="color:#2c7a7b;"></div>
+                    </div>
+                `;
+                list.innerHTML += html;
+            });
+            document.getElementById('s2-calcAllBtn').style.display = 'block';
+        }
+
+        function calcSingleStage2(senderId, myId) {
+            const myKey = keys.find(k => k.id === myId);
+            const inputEl = document.getElementById(`s2-input-${senderId}`);
+            const resEl = document.getElementById(`s2-res-${senderId}`);
+            const c = parseInt(inputEl.value);
+            
+            if (isNaN(c)) {
+                resEl.innerHTML = "⚠️ 請輸入密文數字";
+                resEl.className = "result-box show";
+                return;
+            }
+            
+            const m = modPow(c, myKey.d, myKey.N);
+            resEl.innerHTML = `還原的明文應為：<span style="font-size:24px;">${m}</span>`;
+            resEl.className = "result-box show";
+        }
+
+        function calcAllStage2() {
+            const myId = parseInt(document.getElementById('s2-myGroup').value);
+            keys.forEach(sender => {
+                if (sender.id !== myId) {
+                    const val = document.getElementById(`s2-input-${sender.id}`).value;
+                    if(val !== "") calcSingleStage2(sender.id, myId);
+                }
+            });
+        }
+    </script>
+</body>
+</html>
